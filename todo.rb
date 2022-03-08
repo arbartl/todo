@@ -133,8 +133,13 @@ end
 post "/lists/:id/delete" do
   id = params["id"].to_i
   session[:lists].delete_at(id)
-  session[:success] = "The list was successfully deleted."
-  redirect "/lists"
+
+  if env["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
+    "/lists"
+  else
+    session[:success] = "The list was successfully deleted."
+    redirect "/lists"
+  end
 end
 
 # Complete a todo item in a list
@@ -144,10 +149,16 @@ post "/lists/:id/todos/:todo_id" do
 
   todo_id = params[:todo_id].to_i
   is_completed = params[:completed] == "true"
-  @list[:todos][todo_id][:completed] = is_completed
+  todo = @list[:todos].find { |todo| todo[:id] == todo_id}
+  todo[:completed] = is_completed
 
   session[:success] = "The todo item has been updated."
   redirect "/lists/#{id}"
+end
+
+def next_todo_id(todos)
+  max = todos.map { |todo| todo[:id] }.max || 0
+  max + 1
 end
 
 # Add a todo item to a list
@@ -162,7 +173,8 @@ post "/lists/:id/todos" do
     session[:error] = error
     erb :list, layout: :layout
   else
-    @list[:todos] << { name: todo, completed: false }
+    id = next_todo_id(@list[:todos])
+    @list[:todos] << { id: id, name: todo, completed: false }
     session[:success] = "'#{params[:todo]}' successfully added!"
     redirect "/lists/#{params["id"]}"
   end
@@ -180,10 +192,15 @@ end
 post "/lists/:id/todos/:todo_id/delete" do
   id = params[:id].to_i
   @list = load_list(id)
+
   todo_id = params[:todo_id].to_i
-  @list[:todos].delete_at(todo_id)
-  session[:success] = "The item was successfully deleted."
-  redirect "/lists/#{id}"
+  @list[:todos].reject! { |todo| todo[:id] == todo_id }
+  if env["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
+    status 204
+  else
+    session[:success] = "The item was successfully deleted."
+    redirect "/lists/#{id}"
+  end
 end
 
 
