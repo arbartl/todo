@@ -89,9 +89,15 @@ def error_for_list_name(list_name)
   end
 end
 
+# View single existing todo list
 get "/lists/:id" do
-  @list = session[:lists][params["id"].to_i]
-  erb :list, layout: :layout
+  if !session[:lists][params["id"].to_i]
+    session[:error] = "The specificed list was not found!"
+    redirect "/lists"
+  else
+    @list = session[:lists][params["id"].to_i]
+    erb :list, layout: :layout
+  end
 end
 
 # Edit an existing todo list
