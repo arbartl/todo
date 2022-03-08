@@ -48,7 +48,7 @@ before do
 end
 
 def load_list(index)
-  list = session[:lists][index] if index && session[:lists][index]
+  list = session[:lists].find { |list| list[:id] == index}
   return list if list
 
   session[:error] = "The specified list was not found!"
@@ -70,6 +70,11 @@ get "/lists/new" do
   erb :new_list, layout: :layout
 end
 
+def next_list_id(lists)
+  max = lists.map { |list| list[:id] }.max || 0
+  max + 1
+end
+
 # Create a new list
 post "/lists/new" do
   list_name = params[:list_name].strip
@@ -79,8 +84,9 @@ post "/lists/new" do
   if error
     session[:error] = error
     erb :new_list, layout: :layout
-  else    
-    session[:lists] << { name: list_name, todos: [] }
+  else
+    id = next_list_id(session[:lists])    
+    session[:lists] << { id: id, name: list_name, todos: [] }
     session[:success] = "The list '#{list_name}' has been successfully created!"
     redirect "/lists"
   end
@@ -132,8 +138,9 @@ end
 # Delete a list from the list of lists
 post "/lists/:id/delete" do
   id = params["id"].to_i
-  session[:lists].delete_at(id)
-
+  session[:lists].reject! { |list| list[:id] == id }
+  session[:success] = "The list was successfully deleted!"
+  
   if env["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest"
     "/lists"
   else
