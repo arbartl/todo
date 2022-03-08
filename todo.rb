@@ -47,6 +47,14 @@ before do
   session[:lists] ||= []
 end
 
+def load_list(index)
+  list = session[:lists][index] if index && session[:lists][index]
+  return list if list
+
+  session[:error] = "The specified list was not found!"
+  redirect "/lists"
+end
+
 get "/" do
   redirect "/lists"
 end
@@ -91,25 +99,23 @@ end
 
 # View single existing todo list
 get "/lists/:id" do
-  if !session[:lists][params["id"].to_i]
-    session[:error] = "The specificed list was not found!"
-    redirect "/lists"
-  else
-    @list = session[:lists][params["id"].to_i]
-    erb :list, layout: :layout
-  end
+  id = params["id"].to_i
+  @list = load_list(id)
+  erb :list, layout: :layout
 end
 
 # Edit an existing todo list
 get "/lists/:id/edit" do
-  @list = session[:lists][params["id"].to_i]
+  id = params["id"].to_i
+  @list = load_list(id)
   erb :edit_list, layout: :layout
 end
 
 # Update name of an existing list
 post "/lists/:id/edit" do
   list_name = params[:list_name].strip
-  @list = session[:lists][params["id"].to_i]
+  id = params["id"].to_i
+  @list = load_list(id)
 
   error = error_for_list_name(list_name)
 
@@ -125,7 +131,8 @@ end
 
 # Delete a list from the list of lists
 post "/lists/:id/delete" do
-  session[:lists].delete_at(params["id"].to_i)
+  id = params["id"].to_i
+  session[:lists].delete_at(id)
   session[:success] = "The list was successfully deleted."
   redirect "/lists"
 end
@@ -133,7 +140,7 @@ end
 # Complete a todo item in a list
 post "/lists/:id/todos/:todo_id" do
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
 
   todo_id = params[:todo_id].to_i
   is_completed = params[:completed] == "true"
@@ -146,7 +153,7 @@ end
 # Add a todo item to a list
 post "/lists/:id/todos" do
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
   todo = params[:todo].strip
 
   error = error_for_todo(todo)
@@ -172,7 +179,7 @@ end
 # Delete a todo item from a list
 post "/lists/:id/todos/:todo_id/delete" do
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
   todo_id = params[:todo_id].to_i
   @list[:todos].delete_at(todo_id)
   session[:success] = "The item was successfully deleted."
@@ -184,7 +191,7 @@ end
 # Complete all items in a list
 post "/lists/:id/complete_all" do
   id = params[:id].to_i
-  @list = session[:lists][id]
+  @list = load_list(id)
 
   @list[:todos].each do |todo|
     todo[:completed] = true
